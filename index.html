@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Building with Claude</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface-2: #1a1a24;
+      --border: rgba(255,255,255,0.07);
+      --accent: #7c6ef7;
+      --accent-glow: rgba(124, 110, 247, 0.25);
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --tag-bg: rgba(124,110,247,0.12);
+      --tag-color: #a89ff5;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── NOISE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-logo span {
+      width: 24px; height: 24px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+    }
+
+    .nav-badge {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      padding: 160px 48px 100px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--tag-color);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      padding: 6px 14px;
+      background: var(--tag-bg);
+      border: 1px solid rgba(124,110,247,0.2);
+      border-radius: 100px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 700;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--accent), #b8aff8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .hero-meta strong {
+      color: var(--text);
+    }
+
+    .divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+    }
+
+    /* ── SECTION ── */
+    .projects {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 48px 120px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── PROJECT CARD ── */
+    .project-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+    }
+
+    .project-card:hover {
+      border-color: rgba(124,110,247,0.3);
+      box-shadow: 0 0 60px var(--accent-glow);
+    }
+
+    .project-card.reverse {
+      direction: rtl;
+    }
+
+    .project-card.reverse > * {
+      direction: ltr;
+    }
+
+    /* Full-width card for featured items */
+    .project-card.full {
+      grid-template-columns: 1fr;
+    }
+
+    .project-card.full .project-image {
+      height: 380px;
+    }
+
+    .project-card.full .project-info {
+      padding: 36px 40px;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 40px;
+    }
+
+    .project-card.full .project-desc {
+      max-width: 440px;
+    }
+
+    /* ── IMAGE PANE ── */
+    .project-image {
+      position: relative;
+      height: 320px;
+      background: var(--surface-2);
+      overflow: hidden;
+    }
+
+    .project-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+
+    .project-card:hover .project-image img {
+      transform: scale(1.03);
+    }
+
+    .project-image .img-placeholder { display: none; }
+
+    .project-image .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, transparent 60%, var(--surface));
+      pointer-events: none;
+    }
+
+    .project-card.reverse .project-image .overlay {
+      background: linear-gradient(to left, transparent 60%, var(--surface));
+    }
+
+    .project-card.full .project-image .overlay {
+      background: linear-gradient(to bottom, transparent 60%, var(--surface));
+    }
+
+    /* ── INFO PANE ── */
+    .project-info {
+      padding: 40px 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .project-number {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .project-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #fff;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+
+    .project-subtitle {
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .project-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.75;
+      margin-bottom: 24px;
+    }
+
+    .project-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 100px;
+      background: var(--tag-bg);
+      color: var(--tag-color);
+      border: 1px solid rgba(124,110,247,0.15);
+      letter-spacing: 0.3px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* ── GLOW ORB ── */
+    .glow-orb {
+      position: fixed;
+      top: -200px;
+      right: -200px;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,110,247,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .hero { padding: 120px 20px 60px; }
+      .projects { padding: 0 20px 80px; }
+
+      .project-card {
+        grid-template-columns: 1fr;
+        direction: ltr !important;
+      }
+
+      .project-image { height: 220px; }
+      .project-image .overlay { display: none; }
+      .project-info { padding: 28px 28px; }
+
+      .project-card.full .project-info {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+
+    /* Image load error fallback */
+    img.error { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="glow-orb"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <span>P</span>
+    Phillip's Portfolio
+  </div>
+  <div class="nav-badge">Built with Claude · 2026</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">Live projects</div>
+  <h1>Building with<br><em>Claude</em></h1>
+  <p class="hero-sub">A growing collection of apps, dashboards, and tools I've created using AI. Each one a different experiment in what's possible.</p>
+  <div class="hero-meta">
+    <span><strong>5</strong> projects</span>
+    <div class="divider"></div>
+    <span>Updated <strong>May 2026</strong></span>
+    <div class="divider"></div>
+    <span>More coming soon</span>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section class="projects">
+  <div class="section-label">Selected work</div>
+
+  <!-- PROJECT 0: CISC App Design -->
+  <article class="project-card full" id="cisc-app">
+    <div class="project-image" style="height:380px;">
+      <img
+        src="cisc-app.png"
+        alt="CISC Prototype app screens"
+        onerror="this.classList.add('error')"
+      />
+      <div class="img-placeholder"></div>
+      <div class="overlay"></div>
+    </div>
+    <div class="project-info" style="flex-direction:row;align-items:flex-start;justify-content:space-between;gap:40px;padding:36px 40px;">
+      <div>
+        <div class="project-number">Project 04</div>
+        <div class="project-title">CISC</div>
+        <div class="project-subtitle">Law Enforcement Intelligence App · Mobile Design</div>
+        <p class="project-desc project-desc--cisc" style="max-width:440px;">
+          A mobile app prototype actively being built for the Colorado Information Sharing Consortium, enabling agencies to share intelligence, coordinate on BOLOs, access an agency directory, and message CISC staff directly. 4 live pathways, 40+ fully wired frames and growing.
+        </p>
+      </div>
+      <div class="project-tags" style="flex-direction:column;align-items:flex-start;flex-shrink:0;padding-top:36px;">
+        <span class="tag">Figma Prototype</span>
+        <span class="tag">Mobile UI</span>
+        <span class="tag">In Progress</span>
+        <span class="tag">Law Enforcement</span>
+        <span class="tag">Intelligence Sharing</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- PROJECT 1: Spurs Dashboard -->
+  <article class="project-card" id="spurs-hq">
+    <div class="project-image">
+      <!--
+        TO ADD IMAGE: save your screenshot as "spurs-dashboard.png"
+        in the same folder as this HTML file.
+      -->
+      <img
+        src="spurs-dashboard.png"
+        alt="Spurs HQ Dashboard screenshot"
+        onerror="this.classList.add('error')"
+      />
+      <div class="img-placeholder">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Add screenshot as<br><code>spurs-dashboard.png</code>
+      </div>
+      <div class="overlay"></div>
+    </div>
+    <div class="project-info">
+      <div class="project-number">Project 01</div>
+      <div class="project-title">Spurs HQ</div>
+      <div class="project-subtitle">Premier League Dashboard · 2025–26</div>
+      <p class="project-desc">
+        A live sports dashboard tracking Tottenham's season in real time. Pulls in the latest news, league table standings, and match results, all in one clean view. Automatically refreshes so it's always current.
+      </p>
+      <div class="project-tags">
+        <span class="tag">Live Artifact</span>
+        <span class="tag">Sports Data</span>
+        <span class="tag">News Feed</span>
+        <span class="tag">Premier League</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- PROJECT 2: Golf Leaderboard -->
+  <article class="project-card reverse" id="golf-leaderboard">
+    <div class="project-image">
+      <!--
+        TO ADD IMAGE: save your screenshot as "golf-leaderboard.png"
+        in the same folder as this HTML file.
+      -->
+      <img
+        src="golf-leaderboard.png"
+        alt="Golf Leaderboard screenshot"
+        onerror="this.classList.add('error')"
+      />
+      <div class="img-placeholder">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Add screenshot as<br><code>golf-leaderboard.png</code>
+      </div>
+      <div class="overlay"></div>
+    </div>
+    <div class="project-info">
+      <div class="project-number">Project 02</div>
+      <div class="project-title">Golf Leaderboard</div>
+      <div class="project-subtitle">PGA Tour · Live Scoring</div>
+      <p class="project-desc">
+        A real-time golf leaderboard that tracked the Charles Schwab Challenge at Colonial Country Club. Displayed player standings, round-by-round scores, and the eventual winner, Russell Henley at −12.
+      </p>
+      <div class="project-tags">
+        <span class="tag">Live Artifact</span>
+        <span class="tag">PGA Tour</span>
+        <span class="tag">Real-time Data</span>
+        <span class="tag">Sortable Table</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- PROJECT 4: Anise Website & Digital Marketing -->
+  <article class="project-card reverse" id="anise">
+    <div class="project-image">
+      <img
+        src="anise-website.png"
+        alt="Anise Modern Vietnam website redesign"
+        onerror="this.classList.add('error')"
+      />
+      <div class="img-placeholder"></div>
+      <div class="overlay"></div>
+    </div>
+    <div class="project-info">
+      <div class="project-number">Project 04</div>
+      <div class="project-title">Anise Modern Vietnam</div>
+      <div class="project-subtitle">Website Redesign & Digital Marketing Strategy · Denver, CO</div>
+      <p class="project-desc">
+        Full digital marketing strategy for a Vietnamese restaurant in Denver's Golden Triangle. Conducted a digital audit, redesigned and published a live website on Wix, built a customer persona from local demographic data, and designed a Google paid search and display campaign, including ad mock-ups, a 4-week campaign calendar, and a KPI framework targeting online order growth and brand awareness.
+      </p>
+      <div class="project-tags">
+        <span class="tag">Web Design</span>
+        <span class="tag">Digital Marketing</span>
+        <span class="tag">Google Ads</span>
+        <span class="tag">Wix</span>
+        <span class="tag">Restaurant</span>
+        <span class="tag">Live Site</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- PROJECT 5: Arc Controller -->
+
+  <article class="project-card" id="arc-controller">
+    <div class="project-image">
+      <!--
+        TO ADD IMAGE: save your screenshot as "arc-controller.png"
+        in the same folder as this HTML file.
+      -->
+      <img
+        src="arc-controller.png"
+        alt="Arc Controller screenshot"
+        onerror="this.classList.add('error')"
+      />
+      <div class="img-placeholder">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Add screenshot as<br><code>arc-controller.png</code>
+      </div>
+      <div class="overlay"></div>
+    </div>
+    <div class="project-info">
+      <div class="project-number">Project 05</div>
+      <div class="project-title">Arc Controller</div>
+      <div class="project-subtitle">Smart Audio Profile Manager</div>
+      <p class="project-desc">
+        A local web app for managing home audio profiles. Switch between Movie Night, Night Mode, and Music presets instantly, each storing volume levels, EQ settings, and subwoofer tuning. Includes a now-playing view and a schedule tab for automation.
+      </p>
+      <div class="project-tags">
+        <span class="tag">Web App</span>
+        <span class="tag">Local Tool</span>
+        <span class="tag">Audio</span>
+        <span class="tag">Dark UI</span>
+        <span class="tag">Profiles</span>
+      </div>
+    </div>
+  </article>
+
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>Built by Phillip · All projects created with <a href="https://claude.ai" target="_blank">Claude</a></p>
+  <p style="color: var(--muted);">More projects coming soon ✦</p>
+</footer>
+
+<script>
+  // Smooth entrance animation
+  const cards = document.querySelectorAll('.project-card');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  cards.forEach(c => {
+    c.style.opacity = '0';
+    c.style.transform = 'translateY(24px)';
+    c.style.transition = 'opacity 0.6s ease, transform 0.6s ease, border-color 0.3s ease, box-shadow 0.3s ease';
+    obs.observe(c);
+  });
+</script>
+
+</body>
+</html>
